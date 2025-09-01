@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Status Pingo</title>
+    <link rel="icon" href="favicon.png" type="image/png">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #0d6efd;
+            /* Azul primário */
+            --secondary-color: #1a2a4c;
+            /* Azul escuro para seções */
+            --background-color: #121822;
+            /* Fundo azul bem escuro */
+            --card-background: #1c273a;
+            /* Fundo dos cards */
+            --text-color: #e0e0e0;
+            /* Texto principal claro */
+            --light-text-color: #a0a0a0;
+            /* Texto secundário */
+            --border-color: #2a3b5a;
+            /* Cor da borda */
+            --safe-status-color: #28a745;
+            /* Verde para "Seguro" */
+            --lost-status-color: #dc3545;
+            /* Vermelho para "Perdido" */
+            --button-hover-color: #0b5ed7;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            padding: 20px 10px;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: var(--card-background);
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+
+        header {
+            background: linear-gradient(135deg, var(--primary-color), #0a4ebd);
+            color: #fff;
+            padding: 30px;
+            text-align: center;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        header h1 {
+            margin: 0 0 10px 0;
+            font-size: 2em;
+            font-weight: 600;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 6px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 600;
+            transition: background-color 0.3s ease;
+            color: #fff;
+        }
+
+        .status-badge.safe {
+            background-color: var(--safe-status-color);
+        }
+
+        .status-badge.lost {
+            background-color: var(--lost-status-color);
+        }
+
+        .section-info {
+            background-color: var(--secondary-color);
+            padding: 20px 25px;
+            margin: 25px;
+            border-radius: 10px;
+            font-size: 0.95em;
+            line-height: 1.5;
+            text-align: center;
+        }
+
+        .details-list {
+            padding: 0 25px;
+            margin-bottom: 25px;
+        }
+
+        .detail-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 15px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .detail-item:last-child {
+            border-bottom: none;
+        }
+
+        .detail-item span:first-child {
+            font-weight: 600;
+            color: var(--light-text-color);
+        }
+
+        .gallery {
+            padding: 0 25px 25px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+        }
+
+        .gallery img {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            border: 1px solid var(--border-color);
+        }
+
+        .gallery img:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        }
+
+        h2 {
+            font-size: 1.4em;
+            font-weight: 600;
+            color: var(--primary-color);
+            padding: 25px 25px 15px;
+            margin-top: 0;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .owner-info {
+            padding: 0 25px 25px;
+        }
+
+        .owner-info p {
+            margin: 0 0 8px;
+        }
+
+        .owner-info strong {
+            color: var(--light-text-color);
+        }
+
+        .action-button-container {
+            padding: 10px 25px 25px;
+            text-align: center;
+        }
+
+        .status-toggle-button {
+            background-color: transparent;
+            color: var(--light-text-color);
+            padding: 8px 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 0.85em;
+            font-weight: normal;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-top: 10px;
+        }
+
+        .status-toggle-button:hover {
+            background-color: var(--card-background);
+            color: var(--text-color);
+            border-color: var(--light-text-color);
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+
+        /* Image Modal */
+        .image-modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .image-modal.open {
+            display: flex;
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-image {
+            max-width: 90%;
+            max-height: 90vh;
+            object-fit: contain;
+            border-radius: 8px;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+
+        .image-modal.open .modal-image {
+            transform: scale(1);
+        }
+
+        .close-image-modal {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: white;
+            font-size: 30px;
+            cursor: pointer;
+            background: none;
+            border: none;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background-color: rgba(0, 0, 0, 0.5);
+            transition: background-color 0.3s ease;
+        }
+
+        .close-image-modal:hover {
+            background-color: rgba(0, 0, 0, 0.8);
+        }
+
+        .modal.open {
+            display: flex;
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            background-color: var(--card-background);
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+            position: relative;
+            transform: translateY(-20px);
+            transition: transform 0.3s ease;
+        }
+
+        .modal.open .modal-content {
+            transform: translateY(0);
+        }
+
+        .modal-content h3 {
+            margin-top: 0;
+            color: var(--primary-color);
+            font-size: 1.5em;
+        }
+
+        .modal-content p {
+            margin-bottom: 20px;
+            color: var(--light-text-color);
+        }
+
+        .modal-content input[type="password"] {
+            width: calc(100% - 24px);
+            padding: 12px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border-color);
+            background-color: var(--background-color);
+            color: var(--text-color);
+            border-radius: 8px;
+            font-size: 1em;
+        }
+
+        .modal-content input[type="password"]:focus {
+            border-color: var(--primary-color);
+            outline: none;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .modal-buttons button {
+            flex: 1;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .modal-buttons .confirm-button {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .modal-buttons .confirm-button:hover {
+            background-color: var(--button-hover-color);
+        }
+
+        .modal-buttons .confirm-button:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+        }
+
+        .modal-buttons .cancel-button {
+            background-color: #333;
+            color: var(--text-color);
+        }
+
+        .modal-buttons .cancel-button:hover {
+            background-color: #444;
+        }
+
+        .whatsapp-button {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: #25D366;
+            color: white;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-decoration: none;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .whatsapp-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        .whatsapp-icon {
+            width: 35px;
+            height: 35px;
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 0;
+            }
+
+            .container {
+                margin: 0;
+                border-radius: 0;
+                box-shadow: none;
+                border: none;
+            }
+
+            .detail-item {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .detail-item span:last-child {
+                text-align: left;
+                margin-top: 5px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1 id="petNameHeader">O Pingo está Feliz e Seguro</h1>
+            <div id="statusBadge" class="status-badge safe">Seguro</div>
+        </header>
+
+        <div class="section-info">
+            <p>Dócil, gosta de carinho, protetor, sossegado e não gosta de gatos e fogos de artifício.</p>
+        </div>
+
+        <div class="details-list">
+            <div class="detail-item"><span>Espécie</span><span>Cachorro</span></div>
+            <div class="detail-item"><span>Raça</span><span>Vira Lata (SRD)</span></div>
+            <div class="detail-item"><span>Sexo</span><span>Macho</span></div>
+            <div class="detail-item"><span>Castrado</span><span>Sim</span></div>
+            <div class="detail-item"><span>Ano de nascimento</span><span>2019</span></div>
+            <div class="detail-item"><span>Localização</span><span>Hortolândia - SP</span></div>
+        </div>
+
+        <div class="gallery">
+            <img src="pingo1.jpg" alt="Pingo 1">
+            <img src="pingo2.jpg" alt="Pingo 2">
+            <img src="pingo3.jpg" alt="Pingo 3">
+            <img src="pingo4.jpg" alt="Pingo 4">
+        </div>
+
+        <h2>Sobre o Dono</h2>
+        <div class="owner-info">
+            <p><strong>Nome:</strong> João Victor</p>
+            <p><strong>Telefone:</strong> <span id="phoneDisplay"></span></p>
+            <p id="contactMessage">Em caso de emergência, por favor, entre em contato!</p>
+        </div>
+
+        <div class="action-button-container">
+            <button class="status-toggle-button" id="toggleStatusButton">Alterar Status do Pingo</button>
+        </div>
+    </div>
+
+    <!-- Botão do WhatsApp -->
+    <a href="https://wa.me/5541995923080" id="whatsappButton" class="whatsapp-button" target="_blank"
+        rel="noopener noreferrer" style="display: none;">
+        <svg class="whatsapp-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512">
+            <path fill="currentColor"
+                d="M380.9 97.1C339 55.1 283.2 32 223.9 32c-122.4 0-222 99.6-222 222 0 39.1 10.2 77.3 29.6 111L0 480l117.7-30.9c32.4 17.7 68.9 27 106.1 27h.1c122.3 0 224.1-99.6 224.1-222 0-59.3-25.2-115-67.1-157zm-157 341.6c-33.2 0-65.7-8.9-94-25.7l-6.7-4-69.8 18.3L72 359.2l-4.4-7c-18.5-29.4-28.2-63.3-28.2-98.2 0-101.7 82.8-184.5 184.6-184.5 49.3 0 95.6 19.2 130.4 54.1 34.8 34.9 56.2 81.2 56.1 130.5 0 101.8-84.9 184.6-186.6 184.6zm101.2-138.2c-5.5-2.8-32.8-16.2-37.9-18-5.1-1.9-8.8-2.8-12.5 2.8-3.7 5.6-14.3 18-17.6 21.8-3.2 3.7-6.5 4.2-12 1.4-32.6-16.3-54-29.1-75.5-66-5.7-9.8 5.7-9.1 16.3-30.3 1.8-3.7.9-6.9-.5-9.7-1.4-2.8-12.5-30.1-17.1-41.2-4.5-10.8-9.1-9.3-12.5-9.5-3.2-.2-6.9-.2-10.6-.2-3.7 0-9.7 1.4-14.8 6.9-5.1 5.6-19.4 19-19.4 46.3 0 27.3 19.9 53.7 22.6 57.4 2.8 3.7 39.1 59.7 94.8 83.8 35.2 15.2 49 16.5 66.6 13.9 10.7-1.6 32.8-13.4 37.4-26.4 4.6-13 4.6-24.1 3.2-26.4-1.3-2.5-5-3.9-10.5-6.6z" />
+        </svg>
+    </a>
+
+    <!-- Modal de Autenticação -->
+    <div id="authModal" class="modal">
+        <div class="modal-content">
+            <h3>Autenticação Necessária</h3>
+            <p>Digite a senha para alterar o status do Pingo.</p>
+            <input type="password" id="passwordInput" placeholder="Sua senha secreta">
+            <div class="modal-buttons">
+                <button class="cancel-button" id="cancelPassword">Cancelar</button>
+                <button class="confirm-button" id="confirmPassword">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Imagem -->
+    <div id="imageModal" class="image-modal">
+        <button class="close-image-modal" id="closeImageModal">&times;</button>
+        <img class="modal-image" id="modalImage" src="" alt="Imagem ampliada">
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const petNameHeader = document.getElementById('petNameHeader');
+            const statusBadge = document.getElementById('statusBadge');
+            const toggleStatusButton = document.getElementById('toggleStatusButton');
+            const authModal = document.getElementById('authModal');
+            const passwordInput = document.getElementById('passwordInput');
+            const confirmPasswordButton = document.getElementById('confirmPassword');
+            const cancelPasswordButton = document.getElementById('cancelPassword');
+
+            const STORED_HASH = 'c2011521b75bc0360bf81eef8c7157cff3c853bf3a1532dd7b255824ccd2a70c';
+
+            let isPetLost = localStorage.getItem('isPetLost') === 'true';
+
+            async function hashPasswordSHA256(password) {
+                const encoder = new TextEncoder();
+                const data = encoder.encode(password);
+
+                const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+
+                const hashArray = Array.from(new Uint8Array(hashBuffer));
+                const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+                return hashHex;
+            }
+
+            function updateStatusDisplay() {
+                const phoneDisplay = document.getElementById('phoneDisplay');
+                const whatsappButton = document.getElementById('whatsappButton');
+                const contactMessage = document.getElementById('contactMessage');
+
+                if (isPetLost) {
+                    petNameHeader.textContent = "O Pingo está Perdido!";
+                    statusBadge.textContent = "Perdido";
+                    statusBadge.classList.replace('safe', 'lost');
+                    document.documentElement.style.setProperty('--primary-color', 'var(--lost-status-color)');
+                    phoneDisplay.textContent = "(41) 99592-3080";
+                    whatsappButton.style.display = "flex";
+                    contactMessage.textContent = "Em caso de emergência, por favor, entre em contato!";
+                } else {
+                    petNameHeader.textContent = "O Pingo está Feliz e Seguro";
+                    statusBadge.textContent = "Seguro";
+                    statusBadge.classList.replace('lost', 'safe');
+                    document.documentElement.style.setProperty('--primary-color', '#0d6efd');
+                    phoneDisplay.textContent = "Estará disponível quando o animal estiver com o status perdido";
+                    whatsappButton.style.display = "none";
+                    contactMessage.textContent = "";
+                }
+                localStorage.setItem('isPetLost', isPetLost);
+            }
+
+            updateStatusDisplay();
+
+            toggleStatusButton.addEventListener('click', () => {
+                authModal.classList.add('open');
+                passwordInput.value = '';
+                passwordInput.focus();
+            });
+
+            function closeModal() {
+                authModal.classList.remove('open');
+            }
+
+            confirmPasswordButton.addEventListener('click', async () => {
+                const enteredPassword = passwordInput.value;
+                if (!enteredPassword) {
+                    alert('Por favor, digite a senha.');
+                    return;
+                }
+
+                confirmPasswordButton.disabled = true;
+                confirmPasswordButton.textContent = 'Verificando...';
+
+                const enteredPasswordHash = await hashPasswordSHA256(enteredPassword);
+
+                if (enteredPasswordHash === STORED_HASH) {
+                    isPetLost = !isPetLost;
+                    updateStatusDisplay();
+                    closeModal();
+                    alert('Status alterado com sucesso!');
+                } else {
+                    alert('Senha incorreta! Tente novamente.');
+                }
+
+                confirmPasswordButton.disabled = false;
+                confirmPasswordButton.textContent = 'Confirmar';
+            });
+
+            passwordInput.addEventListener('keyup', (event) => {
+                if (event.key === 'Enter') {
+                    confirmPasswordButton.click();
+                }
+            });
+
+            cancelPasswordButton.addEventListener('click', closeModal);
+            authModal.addEventListener('click', (event) => {
+                if (event.target === authModal) closeModal();
+            });
+
+            // Funcionalidade do modal de imagem
+            const imageModal = document.getElementById('imageModal');
+            const modalImage = document.getElementById('modalImage');
+            const closeImageBtn = document.getElementById('closeImageModal');
+            const galleryImages = document.querySelectorAll('.gallery img');
+
+            function openImageModal(imageSrc) {
+                modalImage.src = imageSrc;
+                imageModal.classList.add('open');
+                document.body.style.overflow = 'hidden';
+            }
+
+            function closeImageModal() {
+                imageModal.classList.remove('open');
+                document.body.style.overflow = '';
+            }
+
+            galleryImages.forEach(img => {
+                img.addEventListener('click', () => {
+                    openImageModal(img.src);
+                });
+            });
+
+            closeImageBtn.addEventListener('click', closeImageModal);
+            imageModal.addEventListener('click', (event) => {
+                if (event.target === imageModal) {
+                    closeImageModal();
+                }
+            });
+
+            // Fechar modal de imagem com tecla ESC
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape' && imageModal.classList.contains('open')) {
+                    closeImageModal();
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>
