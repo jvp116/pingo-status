@@ -466,7 +466,6 @@
         <img class="modal-image" id="modalImage" src="" alt="Imagem ampliada">
     </div>
 
-    <script src="config.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const petNameHeader = document.getElementById('petNameHeader');
@@ -479,53 +478,7 @@
 
             const STORED_HASH = 'c2011521b75bc0360bf81eef8c7157cff3c853bf3a1532dd7b255824ccd2a70c';
 
-            let isPetLost = false;
-
-            let BIN_ID = '';
-            async function loadConfig() {
-                try {
-                    const response = await fetch('/api/config');
-                    const config = await response.json();
-                    BIN_ID = config.binId;
-                    loadPetStatus();
-                } catch (error) {
-                    console.error('Erro ao carregar config:', error);
-                }
-            }
-            loadConfig();
-
-            async function loadPetStatus() {
-                try {
-                    const response = await fetch('/api/status');
-                    const data = await response.json();
-                    if (data.isPetLost !== undefined) {
-                        isPetLost = data.isPetLost;
-                        updateStatusDisplay();
-                    }
-                } catch (error) {
-                    console.error('Erro ao carregar o status:', error);
-                }
-            }
-            loadPetStatus();
-            
-            async function savePetStatus() {
-                try {
-                    const response = await fetch('/api/update-status', {
-                        method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ isPetLost })
-                    });
-
-                    if (!response.ok) {
-                        throw new Error('Falha ao salvar o status');
-                    }
-                } catch (error) {
-                    console.error('Erro ao salvar o status:', error);
-                    alert('Houve um erro ao salvar o status. Por favor, tente novamente.');
-                }
-            }
+            let isPetLost = localStorage.getItem('isPetLost') === 'true';
 
             async function hashPasswordSHA256(password) {
                 const encoder = new TextEncoder();
@@ -561,6 +514,7 @@
                     whatsappButton.style.display = "none";
                     contactMessage.textContent = "";
                 }
+                localStorage.setItem('isPetLost', isPetLost);
             }
 
             updateStatusDisplay();
@@ -589,7 +543,6 @@
 
                 if (enteredPasswordHash === STORED_HASH) {
                     isPetLost = !isPetLost;
-                    await savePetStatus();
                     updateStatusDisplay();
                     closeModal();
                     alert('Status alterado com sucesso!');
