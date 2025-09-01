@@ -10,23 +10,14 @@
     <style>
         :root {
             --primary-color: #0d6efd;
-            /* Azul primário */
             --secondary-color: #1a2a4c;
-            /* Azul escuro para seções */
             --background-color: #121822;
-            /* Fundo azul bem escuro */
             --card-background: #1c273a;
-            /* Fundo dos cards */
             --text-color: #e0e0e0;
-            /* Texto principal claro */
             --light-text-color: #a0a0a0;
-            /* Texto secundário */
             --border-color: #2a3b5a;
-            /* Cor da borda */
             --safe-status-color: #28a745;
-            /* Verde para "Seguro" */
             --lost-status-color: #dc3545;
-            /* Vermelho para "Perdido" */
             --button-hover-color: #0b5ed7;
         }
 
@@ -81,6 +72,23 @@
 
         .status-badge.lost {
             background-color: var(--lost-status-color);
+        }
+
+        .loading-indicator {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: var(--light-text-color);
+        }
+
+        .error-message {
+            display: none;
+            background-color: #dc3545;
+            color: white;
+            padding: 15px;
+            margin: 20px;
+            border-radius: 8px;
+            text-align: center;
         }
 
         .section-info {
@@ -179,6 +187,11 @@
             background-color: var(--card-background);
             color: var(--text-color);
             border-color: var(--light-text-color);
+        }
+
+        .status-toggle-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
         }
 
         /* Modal */
@@ -400,7 +413,15 @@
 </head>
 
 <body>
-    <div class="container">
+    <div class="loading-indicator" id="loadingIndicator">
+        <p>Carregando informações do Pingo...</p>
+    </div>
+
+    <div class="error-message" id="errorMessage">
+        <p>Erro ao carregar informações. Usando dados salvos localmente.</p>
+    </div>
+
+    <div class="container" id="mainContainer" style="display: none;">
         <header>
             <h1 id="petNameHeader">O Pingo está Feliz e Seguro</h1>
             <div id="statusBadge" class="status-badge safe">Seguro</div>
@@ -410,16 +431,15 @@
             <p>Dócil, gosta de carinho, protetor, sossegado e não gosta de gatos e fogos de artifício.</p>
         </div>
 
-        <div class="details-list">
-            <div class="detail-item"><span>Espécie</span><span>Cachorro</span></div>
-            <div class="detail-item"><span>Raça</span><span>Vira Lata (SRD)</span></div>
-            <div class="detail-item"><span>Sexo</span><span>Macho</span></div>
-            <div class="detail-item"><span>Castrado</span><span>Sim</span></div>
-            <div class="detail-item"><span>Ano de nascimento</span><span>2019</span></div>
-            <div class="detail-item"><span>Localização</span><span>Hortolândia - SP</span></div>
-        </div>
-
-        <div class="gallery">
+            <div class="details-list">
+                <div class="detail-item"><span>Espécie</span><span>Cachorro</span></div>
+                <div class="detail-item"><span>Raça</span><span>Vira Lata (SRD)</span></div>
+                <div class="detail-item"><span>Sexo</span><span>Macho</span></div>
+                <div class="detail-item"><span>Castrado</span><span>Sim</span></div>
+                <div class="detail-item"><span>Ano de nascimento</span><span>2019</span></div>
+                <div class="detail-item"><span>Localização</span><span>Hortolândia - SP</span></div>
+                <div class="detail-item"><span>Última atualização</span><span id="lastUpdated"></span></div>
+            </div>        <div class="gallery">
             <img src="pingo1.jpg" alt="Pingo 1">
             <img src="pingo2.jpg" alt="Pingo 2">
             <img src="pingo3.jpg" alt="Pingo 3">
@@ -467,140 +487,314 @@
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const petNameHeader = document.getElementById('petNameHeader');
-            const statusBadge = document.getElementById('statusBadge');
-            const toggleStatusButton = document.getElementById('toggleStatusButton');
-            const authModal = document.getElementById('authModal');
-            const passwordInput = document.getElementById('passwordInput');
-            const confirmPasswordButton = document.getElementById('confirmPassword');
-            const cancelPasswordButton = document.getElementById('cancelPassword');
+        const CONFIG = {
+            BIN_ID: '68b4f20443b1c97be93287a0',
+            ACCESS_KEY: '$2a$10$leCWDZLzYZqYsnh8xd3OeOz2GkMENnjLTict9xyMqfZUz/t9pBCOi',
+            BASE_URL: 'https://api.jsonbin.io/v3'
+        };
 
-            const STORED_HASH = 'c2011521b75bc0360bf81eef8c7157cff3c853bf3a1532dd7b255824ccd2a70c';
+        class PingoStatusManager {
+            constructor() {
+                this.petNameHeader = document.getElementById('petNameHeader');
+                this.statusBadge = document.getElementById('statusBadge');
+                this.toggleStatusButton = document.getElementById('toggleStatusButton');
+                this.authModal = document.getElementById('authModal');
+                this.passwordInput = document.getElementById('passwordInput');
+                this.confirmPasswordButton = document.getElementById('confirmPassword');
+                this.cancelPasswordButton = document.getElementById('cancelPassword');
+                this.loadingIndicator = document.getElementById('loadingIndicator');
+                this.errorMessage = document.getElementById('errorMessage');
+                this.mainContainer = document.getElementById('mainContainer');
 
-            let isPetLost = localStorage.getItem('isPetLost') === 'true';
+                this.STORED_HASH = 'c2011521b75bc0360bf81eef8c7157cff3c853bf3a1532dd7b255824ccd2a70c';
+                this.currentData = null;
 
-            async function hashPasswordSHA256(password) {
+                this.init();
+            }
+
+            async init() {
+                this.loadingIndicator.style.display = 'block';
+
+                try {
+                    await this.loadData();
+                    this.updateStatusDisplay();
+                    this.setupEventListeners();
+                } catch (error) {
+                    console.error('Erro ao inicializar:', error);
+                    this.handleError();
+                } finally {
+                    this.loadingIndicator.style.display = 'none';
+                    this.mainContainer.style.display = 'block';
+                }
+            }
+
+            async loadData() {
+                try {
+                    const response = await fetch(`${CONFIG.BASE_URL}/b/${CONFIG.BIN_ID}/latest`, {
+                        method: 'GET',
+                        headers: {
+                            'X-Access-Key': CONFIG.ACCESS_KEY,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    this.currentData = data.record;
+
+                    // Salvar dados localmente como backup
+                    localStorage.setItem('pingoData', JSON.stringify(this.currentData));
+
+                    console.log('Dados carregados com sucesso:', this.currentData);
+                } catch (error) {
+                    console.error('Erro ao carregar dados do JSONBin:', error);
+
+                    // Tentar usar dados salvos localmente
+                    const localData = localStorage.getItem('pingoData');
+                    if (localData) {
+                        this.currentData = JSON.parse(localData);
+                        this.showError('Usando dados salvos localmente.');
+                    } else {
+                        // Dados padrão como fallback
+                        this.currentData = {
+                            isPetLost: false,
+                            lastUpdated: new Date().toISOString()
+                        };
+                        this.showError('Erro ao carregar dados. Usando configurações padrão.');
+                    }
+                    throw error;
+                }
+            }
+
+            async saveData() {
+                try {
+                    // Salva a data no formato ISO para manter a consistência dos dados
+                    this.currentData.lastUpdated = new Date().toISOString();
+
+                    const response = await fetch(`${CONFIG.BASE_URL}/b/${CONFIG.BIN_ID}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Access-Key': CONFIG.ACCESS_KEY
+                        },
+                        body: JSON.stringify(this.currentData)
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const result = await response.json();
+                    console.log('Dados salvos com sucesso:', result);
+
+                    // Também salvar localmente
+                    localStorage.setItem('pingoData', JSON.stringify(this.currentData));
+
+                    return result;
+                } catch (error) {
+                    console.error('Erro ao salvar dados:', error);
+
+                    // Salvar apenas localmente como fallback
+                    localStorage.setItem('pingoData', JSON.stringify(this.currentData));
+                    this.showError('Erro ao sincronizar com servidor. Dados salvos localmente.');
+                    throw error;
+                }
+            }
+
+            async hashPasswordSHA256(password) {
                 const encoder = new TextEncoder();
                 const data = encoder.encode(password);
-
                 const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-
                 const hashArray = Array.from(new Uint8Array(hashBuffer));
                 const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-
                 return hashHex;
             }
 
-            function updateStatusDisplay() {
+            formatDateTime(dateString) {
+                const date = new Date(dateString);
+                return date.toLocaleString('pt-BR', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false
+                });
+            }
+
+            updateStatusDisplay() {
                 const phoneDisplay = document.getElementById('phoneDisplay');
                 const whatsappButton = document.getElementById('whatsappButton');
                 const contactMessage = document.getElementById('contactMessage');
+                const lastUpdatedElement = document.getElementById('lastUpdated');
+                const isPetLost = this.currentData?.isPetLost || false;
+
+                // Atualiza a data de última atualização
+                if (this.currentData?.lastUpdated) {
+                    const date = new Date(this.currentData.lastUpdated);
+                    if (!isNaN(date.getTime())) { // Verifica se a data é válida
+                        lastUpdatedElement.textContent = this.formatDateTime(this.currentData.lastUpdated);
+                    }
+                }
 
                 if (isPetLost) {
-                    petNameHeader.textContent = "O Pingo está Perdido!";
-                    statusBadge.textContent = "Perdido";
-                    statusBadge.classList.replace('safe', 'lost');
+                    this.petNameHeader.textContent = "O Pingo está Perdido!";
+                    this.statusBadge.textContent = "Perdido";
+                    this.statusBadge.classList.replace('safe', 'lost');
                     document.documentElement.style.setProperty('--primary-color', 'var(--lost-status-color)');
                     phoneDisplay.textContent = "(41) 99592-3080";
                     whatsappButton.style.display = "flex";
                     contactMessage.textContent = "Em caso de emergência, por favor, entre em contato!";
                 } else {
-                    petNameHeader.textContent = "O Pingo está Feliz e Seguro";
-                    statusBadge.textContent = "Seguro";
-                    statusBadge.classList.replace('lost', 'safe');
+                    this.petNameHeader.textContent = "O Pingo está Feliz e Seguro";
+                    this.statusBadge.textContent = "Seguro";
+                    this.statusBadge.classList.replace('lost', 'safe');
                     document.documentElement.style.setProperty('--primary-color', '#0d6efd');
                     phoneDisplay.textContent = "Estará disponível quando o animal estiver com o status perdido";
                     whatsappButton.style.display = "none";
                     contactMessage.textContent = "";
                 }
-                localStorage.setItem('isPetLost', isPetLost);
             }
 
-            updateStatusDisplay();
+            setupEventListeners() {
+                this.toggleStatusButton.addEventListener('click', () => {
+                    this.authModal.classList.add('open');
+                    this.passwordInput.value = '';
+                    this.passwordInput.focus();
+                });
 
-            toggleStatusButton.addEventListener('click', () => {
-                authModal.classList.add('open');
-                passwordInput.value = '';
-                passwordInput.focus();
-            });
+                this.confirmPasswordButton.addEventListener('click', async () => {
+                    await this.handlePasswordConfirm();
+                });
 
-            function closeModal() {
-                authModal.classList.remove('open');
+                this.passwordInput.addEventListener('keyup', (event) => {
+                    if (event.key === 'Enter') {
+                        this.confirmPasswordButton.click();
+                    }
+                });
+
+                this.cancelPasswordButton.addEventListener('click', () => {
+                    this.closeModal();
+                });
+
+                this.authModal.addEventListener('click', (event) => {
+                    if (event.target === this.authModal) this.closeModal();
+                });
+
+                // Setup image modal
+                this.setupImageModal();
             }
 
-            confirmPasswordButton.addEventListener('click', async () => {
-                const enteredPassword = passwordInput.value;
+            async handlePasswordConfirm() {
+                const enteredPassword = this.passwordInput.value;
                 if (!enteredPassword) {
                     alert('Por favor, digite a senha.');
                     return;
                 }
 
-                confirmPasswordButton.disabled = true;
-                confirmPasswordButton.textContent = 'Verificando...';
+                this.confirmPasswordButton.disabled = true;
+                this.confirmPasswordButton.textContent = 'Verificando...';
 
-                const enteredPasswordHash = await hashPasswordSHA256(enteredPassword);
+                try {
+                    const enteredPasswordHash = await this.hashPasswordSHA256(enteredPassword);
 
-                if (enteredPasswordHash === STORED_HASH) {
-                    isPetLost = !isPetLost;
-                    updateStatusDisplay();
-                    closeModal();
-                    alert('Status alterado com sucesso!');
+                    if (enteredPasswordHash === this.STORED_HASH) {
+                        this.currentData.isPetLost = !this.currentData.isPetLost;
+
+                        // Primeiro atualiza a interface
+                        this.updateStatusDisplay();
+                        this.closeModal();
+
+                        // Depois tenta salvar
+                        try {
+                            await this.saveData();
+                            alert('Status alterado com sucesso!');
+                        } catch (error) {
+                            alert('Status alterado localmente. Pode haver problemas de sincronização.');
+                        }
+                    } else {
+                        alert('Senha incorreta! Tente novamente.');
+                    }
+                } catch (error) {
+                    console.error('Erro ao processar senha:', error);
+                    alert('Erro interno. Tente novamente.');
+                }
+
+                this.confirmPasswordButton.disabled = false;
+                this.confirmPasswordButton.textContent = 'Confirmar';
+            }
+
+            closeModal() {
+                this.authModal.classList.remove('open');
+            }
+
+            showError(message) {
+                this.errorMessage.querySelector('p').textContent = message;
+                this.errorMessage.style.display = 'block';
+                setTimeout(() => {
+                    this.errorMessage.style.display = 'none';
+                }, 5000);
+            }
+
+            handleError() {
+                // Tentar usar dados locais como fallback
+                const localData = localStorage.getItem('pingoData');
+                if (localData) {
+                    this.currentData = JSON.parse(localData);
                 } else {
-                    alert('Senha incorreta! Tente novamente.');
+                    this.currentData = {
+                        isPetLost: false,
+                        lastUpdated: new Date().toISOString()
+                    };
                 }
-
-                confirmPasswordButton.disabled = false;
-                confirmPasswordButton.textContent = 'Confirmar';
-            });
-
-            passwordInput.addEventListener('keyup', (event) => {
-                if (event.key === 'Enter') {
-                    confirmPasswordButton.click();
-                }
-            });
-
-            cancelPasswordButton.addEventListener('click', closeModal);
-            authModal.addEventListener('click', (event) => {
-                if (event.target === authModal) closeModal();
-            });
-
-            // Funcionalidade do modal de imagem
-            const imageModal = document.getElementById('imageModal');
-            const modalImage = document.getElementById('modalImage');
-            const closeImageBtn = document.getElementById('closeImageModal');
-            const galleryImages = document.querySelectorAll('.gallery img');
-
-            function openImageModal(imageSrc) {
-                modalImage.src = imageSrc;
-                imageModal.classList.add('open');
-                document.body.style.overflow = 'hidden';
+                this.updateStatusDisplay();
+                this.setupEventListeners();
             }
 
-            function closeImageModal() {
-                imageModal.classList.remove('open');
-                document.body.style.overflow = '';
-            }
+            setupImageModal() {
+                const imageModal = document.getElementById('imageModal');
+                const modalImage = document.getElementById('modalImage');
+                const closeImageBtn = document.getElementById('closeImageModal');
+                const galleryImages = document.querySelectorAll('.gallery img');
 
-            galleryImages.forEach(img => {
-                img.addEventListener('click', () => {
-                    openImageModal(img.src);
+                function openImageModal(imageSrc) {
+                    modalImage.src = imageSrc;
+                    imageModal.classList.add('open');
+                    document.body.style.overflow = 'hidden';
+                }
+
+                function closeImageModal() {
+                    imageModal.classList.remove('open');
+                    document.body.style.overflow = '';
+                }
+
+                galleryImages.forEach(img => {
+                    img.addEventListener('click', () => {
+                        openImageModal(img.src);
+                    });
                 });
-            });
 
-            closeImageBtn.addEventListener('click', closeImageModal);
-            imageModal.addEventListener('click', (event) => {
-                if (event.target === imageModal) {
-                    closeImageModal();
-                }
-            });
+                closeImageBtn.addEventListener('click', closeImageModal);
+                imageModal.addEventListener('click', (event) => {
+                    if (event.target === imageModal) {
+                        closeImageModal();
+                    }
+                });
 
-            // Fechar modal de imagem com tecla ESC
-            document.addEventListener('keydown', (event) => {
-                if (event.key === 'Escape' && imageModal.classList.contains('open')) {
-                    closeImageModal();
-                }
-            });
+                document.addEventListener('keydown', (event) => {
+                    if (event.key === 'Escape' && imageModal.classList.contains('open')) {
+                        closeImageModal();
+                    }
+                });
+            }
+        }
+
+        // Inicializar quando o DOM estiver pronto
+        document.addEventListener('DOMContentLoaded', () => {
+            new PingoStatusManager();
         });
     </script>
 </body>
