@@ -242,6 +242,8 @@
             border-radius: 8px;
             transform: scale(0.9);
             transition: transform 0.3s ease;
+            user-select: none;
+            -webkit-user-select: none;
         }
 
         .image-modal.open .modal-image {
@@ -249,26 +251,81 @@
         }
 
         .close-image-modal {
-            position: absolute;
+            position: fixed;
             top: 20px;
             right: 20px;
             color: white;
             font-size: 30px;
             cursor: pointer;
-            background: none;
-            border: none;
-            width: 40px;
-            height: 40px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid white;
+            width: 44px;
+            height: 44px;
             display: flex;
             align-items: center;
             justify-content: center;
             border-radius: 50%;
-            background-color: rgba(0, 0, 0, 0.5);
             transition: background-color 0.3s ease;
+            z-index: 1010;
+            -webkit-tap-highlight-color: transparent;
         }
 
         .close-image-modal:hover {
             background-color: rgba(0, 0, 0, 0.8);
+        }
+
+        .image-nav-button {
+            position: fixed;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            border: 2px solid white;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 1010;
+            transition: background-color 0.3s ease;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .prev-image {
+            left: 20px;
+        }
+
+        .next-image {
+            right: 20px;
+        }
+
+        .image-nav-button:hover {
+            background-color: rgba(0, 0, 0, 0.8);
+        }
+
+        @media (max-width: 600px) {
+
+            .close-image-modal,
+            .image-nav-button {
+                width: 40px;
+                height: 40px;
+                font-size: 24px;
+            }
+
+            .close-image-modal {
+                top: 10px;
+                right: 10px;
+            }
+
+            .prev-image {
+                left: 10px;
+            }
+
+            .next-image {
+                right: 10px;
+            }
         }
 
         .modal.open {
@@ -431,15 +488,16 @@
             <p>Dócil, gosta de carinho, protetor, sossegado e não gosta de gatos e fogos de artifício.</p>
         </div>
 
-            <div class="details-list">
-                <div class="detail-item"><span>Espécie</span><span>Cachorro</span></div>
-                <div class="detail-item"><span>Raça</span><span>Vira Lata (SRD)</span></div>
-                <div class="detail-item"><span>Sexo</span><span>Macho</span></div>
-                <div class="detail-item"><span>Castrado</span><span>Sim</span></div>
-                <div class="detail-item"><span>Ano de nascimento</span><span>2019</span></div>
-                <div class="detail-item"><span>Localização</span><span>Hortolândia - SP</span></div>
-                <div class="detail-item"><span>Última atualização</span><span id="lastUpdated"></span></div>
-            </div>        <div class="gallery">
+        <div class="details-list">
+            <div class="detail-item"><span>Espécie</span><span>Cachorro</span></div>
+            <div class="detail-item"><span>Raça</span><span>Vira Lata (SRD)</span></div>
+            <div class="detail-item"><span>Sexo</span><span>Macho</span></div>
+            <div class="detail-item"><span>Castrado</span><span>Sim</span></div>
+            <div class="detail-item"><span>Ano de nascimento</span><span>2019</span></div>
+            <div class="detail-item"><span>Localização</span><span>Hortolândia - SP</span></div>
+            <div class="detail-item"><span>Última atualização</span><span id="lastUpdated"></span></div>
+        </div>
+        <div class="gallery">
             <img src="pingo1.jpg" alt="Pingo 1">
             <img src="pingo2.jpg" alt="Pingo 2">
             <img src="pingo3.jpg" alt="Pingo 3">
@@ -483,6 +541,8 @@
     <!-- Modal de Imagem -->
     <div id="imageModal" class="image-modal">
         <button class="close-image-modal" id="closeImageModal">&times;</button>
+        <button class="image-nav-button prev-image" id="prevImage">&lt;</button>
+        <button class="image-nav-button next-image" id="nextImage">&gt;</button>
         <img class="modal-image" id="modalImage" src="" alt="Imagem ampliada">
     </div>
 
@@ -758,12 +818,17 @@
                 const imageModal = document.getElementById('imageModal');
                 const modalImage = document.getElementById('modalImage');
                 const closeImageBtn = document.getElementById('closeImageModal');
+                const prevImageBtn = document.getElementById('prevImage');
+                const nextImageBtn = document.getElementById('nextImage');
                 const galleryImages = document.querySelectorAll('.gallery img');
+                let currentImageIndex = 0;
 
-                function openImageModal(imageSrc) {
+                function openImageModal(imageSrc, index) {
                     modalImage.src = imageSrc;
+                    currentImageIndex = index;
                     imageModal.classList.add('open');
                     document.body.style.overflow = 'hidden';
+                    updateNavigationButtons();
                 }
 
                 function closeImageModal() {
@@ -771,13 +836,63 @@
                     document.body.style.overflow = '';
                 }
 
-                galleryImages.forEach(img => {
+                function updateNavigationButtons() {
+                    prevImageBtn.style.display = currentImageIndex > 0 ? 'flex' : 'none';
+                    nextImageBtn.style.display = currentImageIndex < galleryImages.length - 1 ? 'flex' : 'none';
+                }
+
+                function showNextImage() {
+                    if (currentImageIndex < galleryImages.length - 1) {
+                        currentImageIndex++;
+                        modalImage.src = galleryImages[currentImageIndex].src;
+                        updateNavigationButtons();
+                    }
+                }
+
+                function showPreviousImage() {
+                    if (currentImageIndex > 0) {
+                        currentImageIndex--;
+                        modalImage.src = galleryImages[currentImageIndex].src;
+                        updateNavigationButtons();
+                    }
+                }
+
+                // Event listeners para touch swipe
+                let touchStartX = 0;
+                let touchEndX = 0;
+
+                modalImage.addEventListener('touchstart', (e) => {
+                    touchStartX = e.changedTouches[0].screenX;
+                }, { passive: true });
+
+                modalImage.addEventListener('touchend', (e) => {
+                    touchEndX = e.changedTouches[0].screenX;
+                    handleSwipe();
+                }, { passive: true });
+
+                function handleSwipe() {
+                    const swipeThreshold = 50;
+                    const swipeDistance = touchEndX - touchStartX;
+
+                    if (Math.abs(swipeDistance) > swipeThreshold) {
+                        if (swipeDistance > 0) {
+                            showPreviousImage();
+                        } else {
+                            showNextImage();
+                        }
+                    }
+                }
+
+                galleryImages.forEach((img, index) => {
                     img.addEventListener('click', () => {
-                        openImageModal(img.src);
+                        openImageModal(img.src, index);
                     });
                 });
 
                 closeImageBtn.addEventListener('click', closeImageModal);
+                prevImageBtn.addEventListener('click', showPreviousImage);
+                nextImageBtn.addEventListener('click', showNextImage);
+
                 imageModal.addEventListener('click', (event) => {
                     if (event.target === imageModal) {
                         closeImageModal();
@@ -785,8 +900,18 @@
                 });
 
                 document.addEventListener('keydown', (event) => {
-                    if (event.key === 'Escape' && imageModal.classList.contains('open')) {
-                        closeImageModal();
+                    if (!imageModal.classList.contains('open')) return;
+
+                    switch (event.key) {
+                        case 'Escape':
+                            closeImageModal();
+                            break;
+                        case 'ArrowLeft':
+                            showPreviousImage();
+                            break;
+                        case 'ArrowRight':
+                            showNextImage();
+                            break;
                     }
                 });
             }
